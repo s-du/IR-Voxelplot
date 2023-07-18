@@ -71,6 +71,8 @@ class Custom3dView:
         self.load_but = gui.Button('Choose image')
         self.load_but.set_on_clicked(self.on_button_load)
 
+        # add button to reset camera
+
 
         # add combo for lit/unlit/depth
         self._shader = gui.Combobox()
@@ -88,8 +90,6 @@ class Custom3dView:
         # add combo for voxel size
         self._voxel = gui.Combobox()
 
-
-
         combo_voxel = gui.Horiz(0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
         combo_voxel.add_child(gui.Label("Size of voxels"))
         combo_voxel.add_child(self._voxel)
@@ -98,16 +98,11 @@ class Custom3dView:
         view_ctrls.add_child(self.load_but)
         view_ctrls.add_child(combo_light)
         view_ctrls.add_child(combo_voxel)
+        view_ctrls.add_child(camera_but)
         self.layout.add_child(view_ctrls)
         self.window.add_child(self.layout)
 
-        bounds = self.widget3d.scene.bounding_box
-        center = bounds.get_center()
-        self.widget3d.setup_camera(30, bounds, center)
 
-        camera = self.widget3d.scene.camera
-
-        self.widget3d.look_at(center, center + [0, 0, 1200], [0, -1, 0])
         self.widget3d.set_on_mouse(self._on_mouse_widget3d)
         self.window.set_needs_layout()
 
@@ -134,26 +129,23 @@ class Custom3dView:
     def _on_load_dialog_cancel(self):
         self.window.close_dialog()
 
+    def _on_change_colormap(self):
+        pass
+
     def load(self, img_path):
         self.data = process_one_th_picture(img_path)
-        self.pc_ir, self.tmax, self.tmin, self.factor = surface_from_image(self.data, colormap, n_colors, user_lim_col_low, user_lim_col_high)
-
-        print('ok')
-        loc_tmin = [0,0]
-        loc_tmax = [100,100]
+        self.pc_ir, self.tmax, self.tmin, loc_tmax, loc_tmin, self.factor = surface_from_image(self.data, colormap, n_colors, user_lim_col_low, user_lim_col_high)
 
         # create all voxel grids
         self.voxel_grids = []
         self.voxel_size = [2, 5, 10, 20]
 
-        print('ya')
         for size in self.voxel_size:
             print('yoi')
             voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.pc_ir,
                                                                         voxel_size=size)
             self.voxel_grids.append(voxel_grid)
 
-            print('yossi')
 
         # show one geometry
         self.widget3d.scene.add_geometry('PC 2', self.voxel_grids[2], self.mat)
@@ -190,6 +182,8 @@ class Custom3dView:
         color_array = np.array([[0, 0, 1], [1, 0, 0]])
         pcd_maxi.colors = o3d.utility.Vector3dVector(color_array)
         self.widget3d.scene.add_geometry('Max/Min', pcd_maxi, self.mat_maxi)
+
+        self._on_reset_camera()
 
     def _on_layout(self, layout_context):
         r = self.window.content_rect
@@ -230,6 +224,15 @@ class Custom3dView:
     def _on_sun_dir(self, sun_dir):
         self.widget3d.scene.scene.set_sun_light(sun_dir, [1, 1, 1], 100000)
         self.widget3d.force_redraw()
+
+    def _on_reset_camera(self):
+        # adapt camera
+        bounds = self.widget3d.scene.bounding_box
+        center = bounds.get_center()
+        self.widget3d.setup_camera(30, bounds, center)
+        camera = self.widget3d.scene.camera
+        self.widget3d.look_at(center, center + [0, 0, 1200], [0, -1, 0])
+
 
     def _on_mouse_widget3d(self, event):
         # We could override BUTTON_DOWN without a modifier, but that would
@@ -279,6 +282,7 @@ class Custom3dView:
             return gui.Widget.EventCallbackResult.HANDLED
         return gui.Widget.EventCallbackResult.IGNORED
 
+
 def read_dji_image(img_in, raw_out, param={'emissivity': 0.95, 'distance': 5, 'humidity': 50, 'reflection': 25}):
     dist = param['distance']
     rh = param['humidity']
@@ -299,6 +303,7 @@ def read_dji_image(img_in, raw_out, param={'emissivity': 0.95, 'distance': 5, 'h
     exif = image.info['exif']
 
     return exif
+
 
 def process_one_th_picture(ir_img_path):
     _, filename = os.path.split(str(ir_img_path))
@@ -356,12 +361,17 @@ def surface_from_image(data, colormap, n_colors, col_low, col_high):
     # get extreme values from data
     tmax = np.amax(data)
     tmin = np.amin(data)
-    indices = np.where(data == tmax)
+    indices_max = np.where(data == tmax)
+    indices_min = np.where(data == tmin)
 
     # Check if there are any occurrences of 'a'
-    if len(indices[0]) > 0:
+    if len(indices_max[0]) > 0:
         # Get the coordinates of the first occurrence
-        max_coords = np.array([indices[0][0], indices[1][0]])
+        loc_tmax = np.array([indices_max[1][0], indices_min[0][0]])
+
+    if len(indices_min[0]) > 0:
+        # Get the coordinates of the first occurrence
+        loc_tmin = np.array([indices_min[1][0], indices_min[0][0]])
 
     # normalized data
     thermal_normalized = (data - tmin) / (tmax - tmin)
@@ -397,7 +407,7 @@ def surface_from_image(data, colormap, n_colors, col_low, col_high):
     color_array = color_array.reshape(width*height, 3)
     pcd.colors = o3d.utility.Vector3dVector(color_array)
 
-    return pcd, tmax, tmin, factor
+    return pcd, tmax, tmin, loc_tmax, loc_tmin, factor
 
 
 
