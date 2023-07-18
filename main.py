@@ -59,7 +59,15 @@ class Custom3dView:
         self.mat_maxi.shader = "defaultUnlit"
         self.mat_maxi.point_size = 15 * self.window.scaling
 
+        # layout
+        self.create_layout()
 
+        # default autorescale on
+        self.auto_rescale = True
+
+
+
+    def create_layout(self):
         # LAYOUT GUI ELEMENTS
         em = self.window.theme.font_size
         self.layout = gui.Vert(0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
@@ -69,7 +77,7 @@ class Custom3dView:
 
         # add button for loading images
         self.button_lay = gui.CollapsableVert("Import data", 0.25 * em,
-                                         gui.Margins(em, 0, 0, 0))
+                                              gui.Margins(em, 0, 0, 0))
         self.load_but = gui.Button('Choose image')
         self.load_but.set_on_clicked(self._on_button_load)
 
@@ -83,6 +91,12 @@ class Custom3dView:
 
         filter_but = gui.Button('Reset temp. filter')
         filter_but.set_on_clicked(self._on_reset_filter)
+
+        # add checkbox to rescale the colormap
+        rescale_check = gui.Checkbox('Auto rescale colormap')
+        # set checked
+        rescale_check.checked = True
+        rescale_check.set_on_checked(self._on_autoscale)
 
         # add combo for lit/unlit/depth
         self._shader = gui.Combobox()
@@ -122,6 +136,7 @@ class Custom3dView:
         view_ctrls.add_child(combo_voxel)
         view_ctrls.add_child(numlayout_min)
         view_ctrls.add_child(numlayout_max)
+        view_ctrls.add_child(rescale_check)
         view_ctrls.add_child(filter_but)
 
         view_ctrls.add_child(camera_but)
@@ -130,12 +145,18 @@ class Custom3dView:
         self.layout.add_child(view_ctrls)
         self.window.add_child(self.layout)
 
-
         self.widget3d.set_on_mouse(self._on_mouse_widget3d)
         self.window.set_needs_layout()
 
+
     def choose_material(self, is_enabled):
         pass
+
+    def _on_autoscale(self, status):
+        if status:
+            self.auto_rescale = True
+        else:
+            self.auto_rescale = False
 
     def _on_button_load(self):
         # choose file
@@ -173,7 +194,7 @@ class Custom3dView:
 
     def load(self, img_path):
         self.data = process_one_th_picture(img_path)
-        self.pc_ir, self.tmax, self.tmin, loc_tmax, loc_tmin, self.factor = surface_from_image(self.data, colormap, n_colors, user_lim_col_low, user_lim_col_high)
+        self.pc_ir, self.points, self.tmax, self.tmin, loc_tmax, loc_tmin, self.factor = surface_from_image(self.data, colormap, n_colors, user_lim_col_low, user_lim_col_high)
 
         # store basic properties
         bound = self.pc_ir.get_axis_aligned_bounding_box()
@@ -198,7 +219,6 @@ class Custom3dView:
             voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.pc_ir,
                                                                         voxel_size=size)
             self.voxel_grids.append(voxel_grid)
-
 
         # show one geometry
         self.widget3d.scene.add_geometry('PC 2', self.voxel_grids[2], self.mat)
@@ -234,7 +254,7 @@ class Custom3dView:
         self.edit_max.double_value = self.tmax
 
         self.edit_min.set_limits(self.tmin, self.tmax)
-        self.edit_min.set_on_value_changed(self._on_edit_min)
+        self.edit_min.set_on_value_changed(self._on_edit_min_new)
         self.edit_min.double_value = self.tmin
 
         # add points
@@ -249,6 +269,30 @@ class Custom3dView:
 
         # add image label
 
+    def _on_edit_min_new(self, value):
+        self.min_value = value
+        new_points = filter_point_cloud_by_intensity(self.points, value*self.factor, self.max_value*self.factor)
+        self.voxel_grids = []
+
+        # create new point cloud
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(new_points)
+
+        # create new colors
+        color = colorize_pc_height(self.points, colormap, user_lim_col_high, user_lim_col_low, n_colors)
+        pcd.colors = o3d.utility.Vector3dVector(color)
+
+        for size in self.voxel_size:
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,voxel_size=size)
+            self.voxel_grids.append(voxel_grid)
+
+        # show one geometry
+        self.widget3d.scene.clear_geometry()
+        self.widget3d.scene.add_geometry(f"PC {self.current_index}", self.voxel_grids[self.current_index], self.mat)
+        self.widget3d.force_redraw()
+
+        # set max values
+        self.edit_max.set_limits(self.min_value, self.tmax)
 
 
     def _on_edit_min(self, value):
@@ -406,6 +450,34 @@ class Custom3dView:
         return gui.Widget.EventCallbackResult.IGNORED
 
 
+def replace_pixels_between_thresholds(image, lower_threshold, upper_threshold, new_value):
+    # Create a copy of the original image to avoid modifying it directly
+    modified_image = np.copy(image)
+
+    # Find the indices of pixels that satisfy the condition (lower_threshold < pixel < upper_threshold)
+    between_threshold_indices = np.logical_and(image > lower_threshold, image < upper_threshold)
+
+    # Replace the pixels between the thresholds with the new value
+    modified_image[between_threshold_indices] = new_value
+
+    return modified_image
+
+
+def filter_point_cloud_by_intensity(point_cloud, lower_threshold, upper_threshold):
+    # Extract the intensity values from the point cloud
+    print('ok')
+    intensity_values = point_cloud[:, 2]  # Assuming the intensity is in the fourth column (index 3)
+    print(intensity_values)
+
+    # Find the indices of points with intensity within the desired range
+    valid_indices = np.where(np.logical_and(intensity_values >= lower_threshold, intensity_values <= upper_threshold))[0]
+
+    print('ok')
+    # Create the filtered point cloud
+    filtered_point_cloud = point_cloud[valid_indices]
+
+    return filtered_point_cloud
+
 def read_dji_image(img_in, raw_out, param={'emissivity': 0.95, 'distance': 5, 'humidity': 50, 'reflection': 25}):
     dist = param['distance']
     rh = param['humidity']
@@ -472,6 +544,48 @@ def get_custom_cmaps(colormap_name, n_colors):
     return out_colormap
 
 
+def colorize_pc_height(pc, colormap, col_high, col_low, n_colors):
+    if colormap == 'Artic' or colormap == 'Iron' or colormap == 'Rainbow':
+        custom_cmap = get_custom_cmaps(colormap, n_colors)
+    else:
+        custom_cmap = cm.get_cmap(colormap, n_colors)
+
+    custom_cmap.set_over(col_high)
+    custom_cmap.set_under(col_low)
+
+    pc_height = pc[:,2]
+    print('gogo')
+
+    # get extreme values from data
+    tmax = np.amax(pc_height)
+    tmin = np.amin(pc_height)
+    """
+    indices_max = np.where(pc_height == tmax)
+    indices_min = np.where(pc_height == tmin)
+
+    # Check if there are any occurrences of 'a'
+    if len(indices_max[0]) > 0:
+        # Get the coordinates of the first occurrence
+        loc_tmax = np.array([-indices_max[1][0], indices_max[0][0]])
+
+    if len(indices_min[0]) > 0:
+        # Get the coordinates of the first occurrence
+        loc_tmin = np.array([-indices_min[1][0], indices_min[0][0]])
+    """
+
+    # normalized data
+    print('jg')
+    thermal_normalized = (pc_height - tmin) / (tmax - tmin)
+    thermal_cmap = custom_cmap(thermal_normalized)
+
+    # thermal_cmap = np.uint8(thermal_cmap)
+    color_array = thermal_cmap[:, [0, 1, 2]]
+    print(color_array.shape)
+    print(color_array)
+
+    return color_array
+
+
 def surface_from_image(data, colormap, n_colors, col_low, col_high):
     if colormap == 'Artic' or colormap == 'Iron' or colormap == 'Rainbow':
         custom_cmap = get_custom_cmaps(colormap, n_colors)
@@ -530,7 +644,7 @@ def surface_from_image(data, colormap, n_colors, col_low, col_high):
     color_array = color_array.reshape(width*height, 3)
     pcd.colors = o3d.utility.Vector3dVector(color_array)
 
-    return pcd, tmax, tmin, loc_tmax, loc_tmin, factor
+    return pcd, points, tmax, tmin, loc_tmax, loc_tmin, factor
 
 
 
