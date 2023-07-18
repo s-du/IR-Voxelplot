@@ -73,7 +73,7 @@ class Custom3dView:
         self.load_but = gui.Button('Choose image')
         self.load_but.set_on_clicked(self._on_button_load)
 
-        img_path = res.find('img/miniature.png')
+        img_path = res.find('img/miniature2.png')
         self.img_thumb = gui.ImageWidget(img_path)
         self.button_lay.add_child(self.img_thumb)
 
@@ -122,9 +122,10 @@ class Custom3dView:
         view_ctrls.add_child(combo_voxel)
         view_ctrls.add_child(numlayout_min)
         view_ctrls.add_child(numlayout_max)
+        view_ctrls.add_child(filter_but)
 
         view_ctrls.add_child(camera_but)
-        view_ctrls.add_child(filter_but)
+
         self.layout.add_child(self.button_lay)
         self.layout.add_child(view_ctrls)
         self.window.add_child(self.layout)
@@ -160,6 +161,7 @@ class Custom3dView:
         pass
 
     def _on_reset_filter(self):
+        self.voxel_grids = []
         for size in self.voxel_size:
             voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.pc_ir,voxel_size=size)
             self.voxel_grids.append(voxel_grid)
@@ -488,11 +490,11 @@ def surface_from_image(data, colormap, n_colors, col_low, col_high):
     # Check if there are any occurrences of 'a'
     if len(indices_max[0]) > 0:
         # Get the coordinates of the first occurrence
-        loc_tmax = np.array([indices_max[1][0], indices_min[0][0]])
+        loc_tmax = np.array([-indices_max[1][0], indices_max[0][0]])
 
     if len(indices_min[0]) > 0:
         # Get the coordinates of the first occurrence
-        loc_tmin = np.array([indices_min[1][0], indices_min[0][0]])
+        loc_tmin = np.array([-indices_min[1][0], indices_min[0][0]])
 
     # normalized data
     thermal_normalized = (data - tmin) / (tmax - tmin)
@@ -510,7 +512,7 @@ def surface_from_image(data, colormap, n_colors, col_low, col_high):
     x_coords, y_coords = np.meshgrid(np.arange(width), np.arange(height))
 
     # Flatten the arrays
-    x = x_coords.flatten()
+    x = -x_coords.flatten()
     y = y_coords.flatten()
     z = data.flatten()
 
