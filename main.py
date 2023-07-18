@@ -232,7 +232,7 @@ class Custom3dView:
         pt1 = self.pt1
         pt1[2] = value*self.factor
         pt2 = self.pt2
-        pt2[2] = self.max_value
+        pt2[2] = self.max_value*self.factor
         np_points = [pt1, pt2]
 
         points = o3d.utility.Vector3dVector(np_points)
@@ -253,7 +253,7 @@ class Custom3dView:
         self.widget3d.force_redraw()
 
         # set max values
-        self.edit_min.set_limits(self.tmin, self.max_value)
+        self.edit_max.set_limits(self.min_value, self.tmax)
 
     def _on_edit_max(self, value):
         self.max_value = value
@@ -261,11 +261,12 @@ class Custom3dView:
 
         # crop point cloud
         pt1 = self.pt1
-        pt1[2] = self.min_value
+        pt1[2] = self.min_value*self.factor
         pt2 = self.pt2
         pt2[2] = value*self.factor
         np_points = [pt1, pt2]
         points = o3d.utility.Vector3dVector(np_points)
+        print(pt1,pt2)
 
         crop_box = o3d.geometry.AxisAlignedBoundingBox
         crop_box = crop_box.create_from_points(points)
