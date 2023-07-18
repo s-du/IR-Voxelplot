@@ -68,12 +68,21 @@ class Custom3dView:
                                          gui.Margins(em, 0, 0, 0))
 
         # add button for loading images
+        self.button_lay = gui.CollapsableVert("Import data", 0.25 * em,
+                                         gui.Margins(em, 0, 0, 0))
         self.load_but = gui.Button('Choose image')
         self.load_but.set_on_clicked(self._on_button_load)
+
+        img_path = res.find('img/miniature.png')
+        self.img_thumb = gui.ImageWidget(img_path)
+        self.button_lay.add_child(self.img_thumb)
 
         # add button to reset camera
         camera_but = gui.Button('Reset view')
         camera_but.set_on_clicked(self._on_reset_camera)
+
+        filter_but = gui.Button('Reset temp. filter')
+        filter_but.set_on_clicked(self._on_reset_filter)
 
         # add combo for lit/unlit/depth
         self._shader = gui.Combobox()
@@ -108,13 +117,15 @@ class Custom3dView:
         numlayout_min.add_child(self.edit_min)
 
         # layout
-        view_ctrls.add_child(self.load_but)
+        self.button_lay.add_child(self.load_but)
         view_ctrls.add_child(combo_light)
         view_ctrls.add_child(combo_voxel)
         view_ctrls.add_child(numlayout_min)
         view_ctrls.add_child(numlayout_max)
 
         view_ctrls.add_child(camera_but)
+        view_ctrls.add_child(filter_but)
+        self.layout.add_child(self.button_lay)
         self.layout.add_child(view_ctrls)
         self.window.add_child(self.layout)
 
@@ -147,6 +158,16 @@ class Custom3dView:
 
     def _on_change_colormap(self):
         pass
+
+    def _on_reset_filter(self):
+        for size in self.voxel_size:
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.pc_ir,voxel_size=size)
+            self.voxel_grids.append(voxel_grid)
+
+        # show one geometry
+        self.widget3d.scene.clear_geometry()
+        self.widget3d.scene.add_geometry(f"PC {self.current_index}", self.voxel_grids[self.current_index], self.mat)
+        self.widget3d.force_redraw()
 
     def load(self, img_path):
         self.data = process_one_th_picture(img_path)
@@ -224,6 +245,9 @@ class Custom3dView:
 
         self._on_reset_camera()
 
+        # add image label
+
+
 
     def _on_edit_min(self, value):
         self.min_value = value
@@ -236,18 +260,15 @@ class Custom3dView:
         np_points = [pt1, pt2]
 
         points = o3d.utility.Vector3dVector(np_points)
-        print('4')
         crop_box = o3d.geometry.AxisAlignedBoundingBox
         crop_box = crop_box.create_from_points(points)
 
         point_cloud_crop = self.pc_ir.crop(crop_box)
-        print('5')
         for size in self.voxel_size:
             voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(point_cloud_crop,voxel_size=size)
             self.voxel_grids.append(voxel_grid)
 
         # show one geometry
-        print('6')
         self.widget3d.scene.clear_geometry()
         self.widget3d.scene.add_geometry(f"PC {self.current_index}", self.voxel_grids[self.current_index], self.mat)
         self.widget3d.force_redraw()
