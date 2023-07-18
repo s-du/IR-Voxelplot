@@ -27,7 +27,7 @@ img_path = Path(res.find('img/M2EA_IR.JPG'))
 class Custom3dView:
     def __init__(self):
         app = gui.Application.instance
-        self.window = app.create_window("Open3D - Infrared analyzer", 1800, 900)
+        self.window = app.create_window("Open3D - Infrared voxels", 1800, 900)
         self.window.set_on_layout(self._on_layout)
         self.widget3d = gui.SceneWidget()
         self.window.add_child(self.widget3d)
@@ -95,10 +95,25 @@ class Custom3dView:
         combo_voxel.add_child(gui.Label("Size of voxels"))
         combo_voxel.add_child(self._voxel)
 
+        # add editor for max temp
+        self.edit_max = gui.Slider(gui.Slider.DOUBLE)
+        self.edit_min = gui.Slider(gui.Slider.DOUBLE)
+
+        numlayout_max = gui.Horiz()
+        numlayout_max.add_child(gui.Label("Max. temp.:"))
+        numlayout_max.add_child(self.edit_max)
+
+        numlayout_min = gui.Horiz()
+        numlayout_min.add_child(gui.Label("Min. temp.:"))
+        numlayout_min.add_child(self.edit_min)
+
         # layout
         view_ctrls.add_child(self.load_but)
         view_ctrls.add_child(combo_light)
         view_ctrls.add_child(combo_voxel)
+        view_ctrls.add_child(numlayout_min)
+        view_ctrls.add_child(numlayout_max)
+
         view_ctrls.add_child(camera_but)
         self.layout.add_child(view_ctrls)
         self.window.add_child(self.layout)
@@ -137,12 +152,26 @@ class Custom3dView:
         self.data = process_one_th_picture(img_path)
         self.pc_ir, self.tmax, self.tmin, loc_tmax, loc_tmin, self.factor = surface_from_image(self.data, colormap, n_colors, user_lim_col_low, user_lim_col_high)
 
+        # store basic properties
+        bound = self.pc_ir.get_axis_aligned_bounding_box()
+        center = bound.get_center()
+        dim = bound.get_extent()
+
+        dim_x = dim[0]
+        dim_y = dim[1]
+        dim_z = dim[2]
+
+        self.pt1 = [center[0] - dim_x / 2, center[1] - dim_y / 2, center[2] - dim_z / 2]
+        self.pt2 = [center[0] + dim_x / 2, center[1] + dim_y / 2, center[2] + dim_z / 2]
+
+        self.min_value = center[2] - dim_z / 2
+        self.max_value = center[2] + dim_z / 2
+
         # create all voxel grids
         self.voxel_grids = []
         self.voxel_size = [2, 5, 10, 20]
 
         for size in self.voxel_size:
-            print('yoi')
             voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.pc_ir,
                                                                         voxel_size=size)
             self.voxel_grids.append(voxel_grid)
@@ -176,6 +205,15 @@ class Custom3dView:
         lab_tmin.color = lab_color_blue
         lab_tmax.color = lab_color_red
 
+        # adapt temp edit limits
+        self.edit_max.set_limits(self.tmin, self.tmax)
+        self.edit_max.set_on_value_changed(self._on_edit_max)
+        self.edit_max.double_value = self.tmax
+
+        self.edit_min.set_limits(self.tmin, self.tmax)
+        self.edit_min.set_on_value_changed(self._on_edit_min)
+        self.edit_min.double_value = self.tmin
+
         # add points
         pcd_maxi = o3d.geometry.PointCloud()
         array = np.array([loc_tmin, loc_tmax])
@@ -185,6 +223,66 @@ class Custom3dView:
         self.widget3d.scene.add_geometry('Max/Min', pcd_maxi, self.mat_maxi)
 
         self._on_reset_camera()
+
+
+    def _on_edit_min(self, value):
+        self.min_value = value
+        self.voxel_grids = []
+        # crop point cloud
+        pt1 = self.pt1
+        pt1[2] = value*self.factor
+        pt2 = self.pt2
+        pt2[2] = self.max_value
+        np_points = [pt1, pt2]
+
+        points = o3d.utility.Vector3dVector(np_points)
+        print('4')
+        crop_box = o3d.geometry.AxisAlignedBoundingBox
+        crop_box = crop_box.create_from_points(points)
+
+        point_cloud_crop = self.pc_ir.crop(crop_box)
+        print('5')
+        for size in self.voxel_size:
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(point_cloud_crop,voxel_size=size)
+            self.voxel_grids.append(voxel_grid)
+
+        # show one geometry
+        print('6')
+        self.widget3d.scene.clear_geometry()
+        self.widget3d.scene.add_geometry(f"PC {self.current_index}", self.voxel_grids[self.current_index], self.mat)
+        self.widget3d.force_redraw()
+
+        # set max values
+        self.edit_min.set_limits(self.tmin, self.max_value)
+
+    def _on_edit_max(self, value):
+        self.max_value = value
+        self.voxel_grids = []
+
+        # crop point cloud
+        pt1 = self.pt1
+        pt1[2] = self.min_value
+        pt2 = self.pt2
+        pt2[2] = value*self.factor
+        np_points = [pt1, pt2]
+        points = o3d.utility.Vector3dVector(np_points)
+
+        crop_box = o3d.geometry.AxisAlignedBoundingBox
+        crop_box = crop_box.create_from_points(points)
+
+        point_cloud_crop = self.pc_ir.crop(crop_box)
+
+        for size in self.voxel_size:
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(point_cloud_crop,voxel_size=size)
+            self.voxel_grids.append(voxel_grid)
+
+        # show one geometry
+        self.widget3d.scene.clear_geometry()
+        self.widget3d.scene.add_geometry(f"PC {self.current_index}", self.voxel_grids[self.current_index], self.mat)
+        self.widget3d.force_redraw()
+
+        # set max values
+        self.edit_min.set_limits(self.tmin, self.max_value)
 
     def _on_layout(self, layout_context):
         r = self.window.content_rect
