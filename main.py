@@ -27,7 +27,7 @@ img_path = Path(res.find('img/M2EA_IR.JPG'))
 class Custom3dView:
     def __init__(self):
         app = gui.Application.instance
-        self.window = app.create_window("Open3D - Infrared analyzer", 1920, 1080)
+        self.window = app.create_window("Open3D - Infrared analyzer", 1800, 900)
         self.window.set_on_layout(self._on_layout)
         self.widget3d = gui.SceneWidget()
         self.window.add_child(self.widget3d)
@@ -69,10 +69,11 @@ class Custom3dView:
 
         # add button for loading images
         self.load_but = gui.Button('Choose image')
-        self.load_but.set_on_clicked(self.on_button_load)
+        self.load_but.set_on_clicked(self._on_button_load)
 
         # add button to reset camera
-
+        camera_but = gui.Button('Reset view')
+        camera_but.set_on_clicked(self._on_reset_camera)
 
         # add combo for lit/unlit/depth
         self._shader = gui.Combobox()
@@ -109,7 +110,7 @@ class Custom3dView:
     def choose_material(self, is_enabled):
         pass
 
-    def on_button_load(self):
+    def _on_button_load(self):
         # choose file
         file_input = gui.FileDialog(gui.FileDialog.OPEN, "Choose file to load",
                                     self.window.theme)
