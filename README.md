@@ -8,7 +8,7 @@ IR-Voxelplot is a simple Open3d-based application for visualizing thermal images
 **The project is still in pre-release, so do not hesitate to send your recommendations or the bugs you encountered!**
 
 <p align="center">
-    <a href="https://ibb.co/mt9fRkh"><img src="https://i.ibb.co/L6xV0m9/voxelplot.jpg" alt="voxelplot" border="0"></a>
+    <a href="https://ibb.co/Zzg7HkM"><img src="https://i.ibb.co/23MH8fk/Voxel-gui.png" alt="Voxel-gui" border="0"></a>
     
     GUI for plotting thermal images as 'voxel' maps
 </p>
