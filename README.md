@@ -63,6 +63,4 @@ Contributions to the IRMapper App are welcome! If you find any bugs, have sugges
 4. Push your changes to your fork.
 5. Submit a pull request describing your changes.
 
-## Acknowledgements
-This project was made possible thanks to subsidies from the Brussels Capital Region, via Innoviris.
-Feel free to use or modify the code, in which case you can cite Buildwise and the Pointify project!
+
