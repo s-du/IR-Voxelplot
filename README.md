@@ -1,5 +1,5 @@
 <p align="center">
-    <a href="https://ibb.co/kGG6KGn"><img src="https://i.ibb.co/BffKLfD/Voxel-Plot.png" alt="Voxel-Plot" border="0"></a>
+    <a href="https://ibb.co/2ZPY1zW"><img src="https://i.ibb.co/dm6JwNj/Voxel-Plot3.png" alt="Voxel-Plot3" border="0"></a>
 </p>
 
 ## Introduction
@@ -35,12 +35,12 @@ Choose some lighting options and define a temperature range! More options to com
 
 1. Clone the repository:
 ```
-git clone https://github.com/s-du/SkyStock
+git clone https://github.com/s-du/IR-Voxelplot
 ```
 
 2. Navigate to the app directory:
 ```
-cd SkyStock
+cd IR-Voxelplot
 ```
 
 3. Install the required dependencies:
@@ -52,9 +52,6 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
-
-## User manual
-(coming soon)
 
 ## Contributing
 
