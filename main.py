@@ -254,7 +254,7 @@ class Custom3dView:
         self.edit_max.double_value = self.tmax
 
         self.edit_min.set_limits(self.tmin, self.tmax)
-        self.edit_min.set_on_value_changed(self._on_edit_min_new)
+        self.edit_min.set_on_value_changed(self._on_edit_min)
         self.edit_min.double_value = self.tmin
 
         # add points
@@ -283,7 +283,7 @@ class Custom3dView:
         pcd.colors = o3d.utility.Vector3dVector(color)
 
         for size in self.voxel_size:
-            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,voxel_size=size)
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=size)
             self.voxel_grids.append(voxel_grid)
 
         # show one geometry
@@ -554,7 +554,6 @@ def colorize_pc_height(pc, colormap, col_high, col_low, n_colors):
     custom_cmap.set_under(col_low)
 
     pc_height = pc[:,2]
-    print('gogo')
 
     # get extreme values from data
     tmax = np.amax(pc_height)
@@ -574,7 +573,6 @@ def colorize_pc_height(pc, colormap, col_high, col_low, n_colors):
     """
 
     # normalized data
-    print('jg')
     thermal_normalized = (pc_height - tmin) / (tmax - tmin)
     thermal_cmap = custom_cmap(thermal_normalized)
 
