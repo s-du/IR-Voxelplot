@@ -3,7 +3,7 @@
 </p>
 
 ## Introduction
-IR-Voxelplot is a simple Open3d-based application for visualizing thermal images (from drones) as 3d plots. It uses a 'voxel' representation, created from the input data. Some simple filtering algorithm are also implemented. 
+IR-Voxelplot is a simple Open3d-based application for visualizing thermal images (from drones) as 3d plots. It uses a 'voxel' representation, created from the input data. Some simple filtering algorithms are also implemented. 
 
 **The project is still in pre-release, so do not hesitate to send your recommendations or the bugs you encountered!**
 
