@@ -22,6 +22,9 @@ Then, the point cloud is converted into a voxel grid, using Open3D library.
 ### Step 1: Importing an image
 Simply choose an infrared thermal image as coming out of the drone
 
+![](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXkydmZlaWplNGFobzBvZzZ1MXVvcWJkZTB5MWJuajMwOTlhZzVrNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dlxujE2GV8Ey5T9O2o/giphy.gif)
+
+
 ### Step 2: Play with the view controls
 Choose some lighting options and define a temperature range! More options to come!
 
